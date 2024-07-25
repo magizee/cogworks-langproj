@@ -20,6 +20,7 @@ class ImageDescriptors:
         '''
         self.caption_embed = dense(caption_dimension, embedding_dimension, weight_initializer = glorot_normal, bias = False)
         self.image_embed = dense(image_dimension, embedding_dimension, weight_initializer = glorot_normal, bias = False)
+        
     def __call__(self, caption, image):
         '''Passes data as input to our model, forword pass.
         
@@ -73,3 +74,25 @@ def shuffle_and_split_data(data, validation_split=0.2):
     train_data = data[:split_idx]
     validation_data = data[split_idx:]
     return train_data, validation_data
+def extract_data(caption, image, confusor):
+    '''Extract training and validation sets from three arrays needed to train model
+    
+    Parameters
+    ----------
+    captions : numpy.ndarray, shape=(N, caption_dim)
+        Array of caption data.
+        
+    images : numpy.ndarray, shape=(N, image_dim)
+        Array of image data.
+        
+    confusors : numpy.ndarray, shape=(N, image_dim)
+        Array of confusor image data.
+        
+    Returns
+    -------
+    Tuple of numpy.ndarrays
+        Training and validation sets for captions, images, and confusors.
+    '''
+    training_set = (shuffle_and_split_data(caption)[0], shuffle_and_split_data(image)[0], shuffle_and_split_data(confusor)[0])
+    validation_set = (shuffle_and_split_data(caption)[1], shuffle_and_split_data(image)[1], shuffle_and_split_data(confusor)[1])
+    return training_set, validation_set

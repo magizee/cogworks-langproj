@@ -6,57 +6,108 @@ from io import BytesIO
 import pickle
 from numpy.linalg import norm
 
-# Function to download an image
-def download_image(img_url: str) -> Image:
-    response = requests.get(img_url)
-    return Image.open(BytesIO(response.content))
+class Database:
+    def __init__(self):
+        self.image_ids = []
+        self.caption_ids = []
+        self.image_to_caption = {}
+        self.caption_to_image = {}
+        self.caption_to_text = {}
+        self.embedding_matrix = None
+        self.image_embeddings = {}
 
-# Step 1: Convert Image Descriptors to Embeddings
-def convert_to_embeddings(descriptors, embedding_matrix):
-    return np.dot(descriptors, embedding_matrix)
+    # Function to download an image
+    @staticmethod
+    def download_image(img_url: str) -> Image:
+        response = requests.get(img_url)
+        return Image.open(BytesIO(response.content))
 
-# Step 2: Create the Image Database
-def create_image_database(image_ids, embeddings):
-    return {image_id: embedding for image_id, embedding in zip(image_ids, embeddings)}
+    # Step 1: Convert Image Descriptors to Embeddings
+    @staticmethod
+    def convert_to_embeddings(descriptors, embedding_matrix):
+        return np.dot(descriptors, embedding_matrix)
 
-# Save the image database to a file
-def save_image_database(database, filename):
-    with open(filename, 'wb') as f:
-        pickle.dump(database, f)
+    # Step 2: Create the Image Database
+    def create_image_database(self, image_ids: int, embeddings: np.array):
+        self.image_embeddings = {image_id: embedding for image_id, embedding in zip(image_ids, embeddings)}
 
-# Load the image database from a file
-def load_image_database(filename):
-    with open(filename, 'rb') as f:
-        return pickle.load(f)
+    # Save the image database to a file
+    @staticmethod
+    def save_image_database(database, filename):
+        with open(filename, 'wb') as f:
+            pickle.dump(database, f)
 
-# Custom cosine similarity function
-def cosine_similarity_manual(a, b):
-    dot_product = np.dot(a, b)
-    norm_a = norm(a)
-    norm_b = norm(b)
-    return dot_product / (norm_a * norm_b)
+    # Load the image database from a file
+    @staticmethod
+    def load_image_database(filename):
+        with open(filename, 'rb') as f:
+            return pickle.load(f)
 
-def cosine_similarity_matrix(matrix, vector):
-    dot_products = np.dot(matrix, vector)
-    norm_matrix = norm(matrix, axis=1)
-    norm_vector = norm(vector)
-    return dot_products / (norm_matrix * norm_vector)
+    # Custom cosine similarity function
+    @staticmethod
+    def cosine_similarity_manual(a, b):
+        dot_product = np.dot(a, b)
+        norm_a = norm(a)
+        norm_b = norm(b)
+        return dot_product / (norm_a * norm_b)
 
-# Step 3: Query the Database
-def query_database(database, caption_embedding, top_k=5):
-    image_ids = list(database.keys())
-    embeddings = np.array(list(database.values()))
-    
-    similarities = cosine_similarity_matrix(embeddings, caption_embedding)
-    top_indices = np.argsort(similarities)[-top_k:][::-1]
-    
-    return [image_ids[i] for i in top_indices]
+    @staticmethod
+    def cosine_similarity_matrix(matrix, vector):
+        dot_products = np.dot(matrix, vector)
+        norm_matrix = norm(matrix, axis=1)
+        norm_vector = norm(vector)
+        return dot_products / (norm_matrix * norm_vector)
 
-# Step 4: Display Images
-def display_images(image_urls):
-    fig, axes = plt.subplots(1, len(image_urls), figsize=(15, 5))
-    for ax, url in zip(axes, image_urls):
-        img = download_image(url)
-        ax.imshow(img)
-        ax.axis('off')
-    plt.show()
+    # Step 3: Query the Database
+    def query_database(self, caption_embedding, top_k=5):
+        image_ids = list(self.image_embeddings.keys())
+        embeddings = np.array(list(self.image_embeddings.values()))
+        
+        similarities = self.cosine_similarity_matrix(embeddings, caption_embedding)
+        top_indices = np.argsort(similarities)[-top_k:][::-1]
+        
+        return [image_ids[i] for i in top_indices]
+
+    # Step 4: Display Images
+    @staticmethod
+    def display_images(image_urls: list):
+        fig, axes = plt.subplots(1, len(image_urls), figsize=(15, 5))
+        for ax, url in zip(axes, image_urls):
+            img = Database.download_image(url)
+            ax.imshow(img)
+            ax.axis('off')
+        plt.show()
+
+
+    @staticmethod
+    def generate_random_descriptor_and_matrices(num_images, descriptor_dimension, embedding_dimension):
+        descriptors = np.random.rand(num_images, descriptor_dimension)
+        embedding_matrix = np.random.rand(descriptor_dimension, embedding_dimension)
+        return descriptors, embedding_matrix
+
+
+num_images = 10
+descriptor_dimensions = 512
+embedding_dimensions = 200
+
+db = Database()
+
+descriptors, embedding_matrix = db.generate_random_descriptor_and_matrices(num_images, descriptor_dimensions, embedding_dimensions)
+image_ids = [f"image_{i}" for i in range(num_images)]
+image_urls = [f"https://example.com/image_{i}.jpg" for i in range(num_images)]
+
+embeddings = db.convert_to_embeddings(descriptors, embedding_matrix)
+
+database_filename = 'database.pkl'
+db.save_image_database(database=embeddings, filename=database_filename)
+
+loaded_image_database = db.load_image_database(database_filename)
+db.image_embeddings = loaded_image_database
+
+caption_embedding = np.random.rand(embedding_dimensions)
+
+top_image_ids = db.query_database(caption_embedding, top_k=5)
+print("Top Image IDs:", top_image_ids)
+
+top_image_urls = [db.image_to_caption[id]['coco_url'] for id in top_image_ids]
+db.display_images(image_urls=top_image_ids)
