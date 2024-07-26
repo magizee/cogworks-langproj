@@ -30,7 +30,7 @@ class COCOOrganizer:
         count = 0
         for image_id in self.image_ids:
             self.image_to_caption_ids[image_id] = [] 
-        for i, annotation in enumerate(self.COCO_data["annotations"]):
+        for annotation in self.COCO_data["annotations"]:
             #get IDs and caption for each annotation
             image_id = annotation['image_id']
             caption_id = annotation['id'] 
@@ -42,9 +42,6 @@ class COCOOrganizer:
                 self.caption_id_to_caption[caption_id] = caption
                 self.image_to_caption_ids[image_id].append(caption_id)
                 self.caption_id_to_feature[caption_id] = self.resnet18_features[image_id]
-                if i < 62612:
-                    image_info = self.COCO_data["images"][i]
-                    self.caption_id_to_image_url[caption_id] = image_info["coco_url"]
                 count+=1
             if count == 10000:
                 print("10000 annotations processed")
@@ -59,4 +56,8 @@ class COCOOrganizer:
         return self.caption_id_to_caption.get(caption_id)
     def get_feature(self, caption_id):
         return self.caption_id_to_feature.get(caption_id)
-   
+    def get_image_url(self, caption_id):
+        # caption_to_image
+        img_id = self.caption_to_image[caption_id]
+        image_info = self.COCO_data["images"][img_id]
+        return image_info["coco_url"]
