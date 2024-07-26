@@ -187,7 +187,7 @@ for epoch in range(num_epochs):
     training_set = (training_set[0][indices], training_set[1][indices], training_set[2][indices])
 
     #process batches of data
-    for i in range(0, len(training_set[0])):
+    for i in range(0, len(training_set[0]), batch_size):
         batch_captions = Tensor(training_set[0][i : i + batch_size])
         batch_images = Tensor(training_set[1][i : i + batch_size])
         batch_confusors = Tensor(training_set[2][i : i + batch_size])
@@ -204,12 +204,14 @@ for epoch in range(num_epochs):
         optimizer.step()
         optimizer.zero_grad()
 
-        total_loss = total_loss + loss.item()
+        total_loss = total_loss + loss.item() * len(batch_captions)
         total_accuracy = total_accuracy + accuracy * len(batch_captions)
 
     avg_loss = total_loss / len(training_set[0])
     avg_accuracy = total_accuracy / len(training_set[0])
 
     print(f"Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.4f}, Accuracy: {avg_accuracy:.4f}")
+
+#call save and load functions to determine final model parameters
 save_model(model, 'mynn_model_weights_final.pkl')
 load_model(model, 'mynn_model_weights_final.pkl')
