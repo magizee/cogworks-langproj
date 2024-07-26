@@ -28,7 +28,7 @@ class Database:
         return np.dot(descriptors, embedding_matrix)
 
     # Step 2: Create the Image Database
-    def create_image_database(self, image_ids: int, embeddings: np.array):
+    def create_image_database(self, image_ids: list, embeddings: np.array):
         self.image_embeddings = {image_id: embedding for image_id, embedding in zip(image_ids, embeddings)}
 
     # Save the image database to a file
@@ -78,36 +78,8 @@ class Database:
             ax.axis('off')
         plt.show()
 
-
     @staticmethod
     def generate_random_descriptor_and_matrices(num_images, descriptor_dimension, embedding_dimension):
         descriptors = np.random.rand(num_images, descriptor_dimension)
         embedding_matrix = np.random.rand(descriptor_dimension, embedding_dimension)
         return descriptors, embedding_matrix
-
-
-num_images = 10
-descriptor_dimensions = 512
-embedding_dimensions = 200
-
-db = Database()
-
-descriptors, embedding_matrix = db.generate_random_descriptor_and_matrices(num_images, descriptor_dimensions, embedding_dimensions)
-image_ids = [f"image_{i}" for i in range(num_images)]
-image_urls = [f"https://example.com/image_{i}.jpg" for i in range(num_images)]
-
-embeddings = db.convert_to_embeddings(descriptors, embedding_matrix)
-
-database_filename = 'database.pkl'
-db.save_image_database(database=embeddings, filename=database_filename)
-
-loaded_image_database = db.load_image_database(database_filename)
-db.image_embeddings = loaded_image_database
-
-caption_embedding = np.random.rand(embedding_dimensions)
-
-top_image_ids = db.query_database(caption_embedding, top_k=5)
-print("Top Image IDs:", top_image_ids)
-
-top_image_urls = [db.image_to_caption[id]['coco_url'] for id in top_image_ids]
-db.display_images(image_urls=top_image_ids)

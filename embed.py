@@ -77,6 +77,12 @@ def get_glove(word: str):
 
 def make_caption_descriptor(caption: str, idf_map: Dict[str, float]):
     token = np.array(to_token(caption))
-    d = sum(idf_map[t]*get_glove(t) for t in token)
+    sum = []
+    for t in token:
+        if t not in list(idf_map.keys()):
+            sum += 0
+        else: 
+            sum += idf_map[t]*get_glove(t)
+    #d = sum(idf_map[t]*get_glove(t) for t in token)
     d /= np.linalg.norm(d)
     return d
