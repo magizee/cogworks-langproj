@@ -1,8 +1,16 @@
 import re, string
-from typing import List
+from typing import List, Dict
 import itertools
 from collections import Counter
+import numpy as np
 
+# loading glove
+from cogworks_data.language import get_data_path
+from gensim.models import KeyedVectors
+filename = "glove.6B.200d.txt.w2v"
+glove = KeyedVectors.load_word2vec_format(get_data_path(filename), binary=False)
+
+#identifies all punction character
 punc_regex = re.compile('[{}]'.format(re.escape(string.punctuation)))
 
 def strip_punc(corpus):
@@ -33,9 +41,9 @@ def to_token(caption: str) -> List[str]:
     -------
     list
         the caption is split into individual words"""
-    return sorted(strip_punc(caption.lower()).split())
+    return sorted(set(strip_punc(caption.lower()).split()))
 
-def make_the_vocab(token_list: List[List[str]]) -> List[str]:
+def make_the_vocab(token_ls: List[List[str]]) -> List[str]:
     """ Primary code block that enables the making of a vocab list of all words in COCO dataset
 
     Parameters
@@ -48,14 +56,33 @@ def make_the_vocab(token_list: List[List[str]]) -> List[str]:
     -------
     list
         all the words are compiled into one list"""
-    return sorted(set(itertools.chain(*token_list)))
+    return sorted(set(itertools.chain(*token_ls)))
 
-def to_counter(doc):
-    #splitting cospur into tokens
-    token = sorted(to_token(doc))
-    #counting tokens
-    ls = Counter(token)
-    #ls = Counter(dict(sorted(ls.items())))
-    return ls
+def to_idf(token_ls: List[List[str]]) -> List[float]:
+    N = len(token_ls)
+    # print(N)
+    # counts number of documents a word appears in
+    flat_token = sorted(itertools.chain(*token_ls))
+    nt_counter = dict(sorted(Counter(flat_token).items()))
+    # gets alphabetically sored num occurances
+    nt = np.array(list(nt_counter.values()), dtype=float)
+    idf = np.log10(N / nt)
+    return idf
 
-#Working on these functions: to_idf, to_glove, and caption_to_descriptor
+def make_idf_mapping(idf: List[float], vocab:List[str]) -> Dict[str, float]:
+    return {v:i for v, i in zip(vocab, idf)}
+
+def get_glove(word: str):
+    return glove[word]
+
+def make_caption_descriptor(caption: str, idf_map: Dict[str, float]):
+    token = np.array(to_token(caption))
+    sum = []
+    for t in token:
+        if t not in list(idf_map.keys()):
+            sum += 0
+        else: 
+            sum += idf_map[t]*get_glove(t)
+    #d = sum(idf_map[t]*get_glove(t) for t in token)
+    d /= np.linalg.norm(d)
+    return d

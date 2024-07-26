@@ -1,55 +1,59 @@
 from cogworks_data.language import get_data_path
-import pickle
 
 from pathlib import Path
 import json
+import pickle
 
 class COCOOrganizer:
+    
     def __init__(self):
-        self.load_data()
-        # store all img + caption IDs
-        self.image_IDs = []
-        self.caption_IDs = []
-        # Initialize Various mappings between image/caption IDs, and associating caption-IDs with captions        
-        self.image_to_caption_IDs = {}
-        self.caption_to_image = {}
-        self.caption_ID_to_caption = {}
-        self.caption_ID_to_feature = {}
-        
-        self.organize()
-        
-    def load_data(self):
         # load COCO data
         filename = get_data_path("captions_train2014.json")
         with Path(filename).open() as f:
             self.COCO_data = json.load(f)
-        # load image features
+            
         with Path(get_data_path('resnet18_features.pkl')).open('rb') as f:
             self.resnet18_features = pickle.load(f)
-    
+        # store all img + caption IDs
+        self.image_ids = self.resnet18_features.keys()
+        self.caption_ids = []
+        # Initialize Various mappings between image/caption IDs, and associating caption-IDs with captions        
+        self.image_to_caption_ids = {}
+        self.caption_to_image = {}
+        self.caption_id_to_caption = {}
+        self.caption_id_to_feature = {}
+
+        self.organize()
+        
     def organize(self):
         #loop thru images
-        for image_id in self.resnet18_features["images"]:
-            image_ID = image_id        
-            #store each image ID in one big list
-            self.image_IDs.append(image_ID)
-            #init image-> captions dictionary
-            self.image_to_caption_IDs[image_ID] = []
+        count = 0
+        for image_id in self.image_ids:
+            self.image_to_caption_ids[image_id] = [] 
         for annotation in self.COCO_data["annotations"]:
             #get IDs and caption for each annotation
-            caption_ID = annotation['id'] 
-            image_ID = annotation['image_id']
+            image_id = annotation['image_id']
+            caption_id = annotation['id'] 
             caption = annotation['caption']
-            #add info to lists + dictionaries
-            self.caption_IDs.append(caption_ID)
-            self.caption_to_image[caption_ID] = image_ID
-            self.caption_ID_to_caption[caption_ID] = caption
-            self.image_to_caption_IDs[image_ID].append(caption_ID)
-            self.caption_ID_to_feature[caption_ID] = self.resnet18_features[image_ID]
+#             print(f"Processing annotation with image_id: {image_id}, caption_id: {caption_id}")
+            if image_id in self.image_ids:
+                self.caption_ids.append(caption_id)
+                self.caption_to_image[caption_id] = image_id
+                self.caption_id_to_caption[caption_id] = caption
+                self.image_to_caption_ids[image_id].append(caption_id)
+                self.caption_id_to_feature[caption_id] = self.resnet18_features[image_id]
+                count+=1
+            if count == 10000:
+                print("10000 annotations processed")
+            if count == 20000:
+                print("20000 annotations processed")
 
-    def get_caption_ID(self, image_ID):
-        return self.image_to_caption_IDs.get(image_ID)
-    def get_image_ID(self, caption_ID):
-        return self.caption_to_image.get(caption_ID)
-    def get_caption(self, caption_ID):
-        return self.caption_ID_to_caption.get(caption_ID)
+    def get_caption_id(self, image_id):
+        return self.image_to_caption_ids.get(image_id)
+    def get_image_id(self, caption_id):
+        return self.caption_to_image.get(caption_id)
+    def get_caption(self, caption_id):
+        return self.caption_id_to_caption.get(caption_id)
+    def get_feature(self, caption_id):
+        return self.caption_id_to_feature.get(caption_id)
+   
