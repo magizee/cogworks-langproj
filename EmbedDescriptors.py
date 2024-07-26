@@ -1,9 +1,11 @@
 #import libraries needed 
 import numpy as np
+from mygrad import Tensor
 from mynn.layers.dense import dense
 from mynn.optimizers.sgd import SGD
 from mygrad.nnet.initializers import glorot_normal
 from mygrad.nnet.losses import margin_ranking_loss
+import pickle 
 
 #created myNN model for embedding image descriptors
 class ImageDescriptors:
@@ -135,6 +137,38 @@ def compute_loss_and_accuracy(caption_emb, image_emb, confusor_emb):
     
     return loss, accuracy
 
+def save_model(model, file_path):
+    '''Saves the model weights to a file.
+    
+    Parameters
+    ----------
+    model : ImageDescriptors
+        Trained model containing weights
+        
+    file_path : str
+        Path for the model's weights will be saved
+    '''
+    with open(file_path, 'wb') as f:
+        pickle.dump({k: v.data for k, v in model.parameters.items()}, f)
+
+def load_model(model, file_path):
+    '''Loads the model weights from a file.
+    
+    Parameters
+    ----------
+    model : ImageDescriptors
+        Model where weights will load
+        
+    file_path : str
+       Path where model's weights will be loaded
+    '''
+    with open(file_path, 'rb') as f:
+        weights = pickle.load(f)
+
+    for k, v in weights.items():
+        model.parameters[k].data = v
+
+
 #model and optimizer are initialized
 model = ImageDescriptors(caption_dimension = 200, image_dimension = 512, embedding_dimension = 128)
 optimizer = SGD(model.parameters, learning_rate = 1e-3, momentum = 0.9)
@@ -151,3 +185,33 @@ for epoch in range(num_epochs):
     indices = np.arange(len(training_set[0]))
     np.random.shuffle(indices)
     training_set = (training_set[0][indices], training_set[1][indices], training_set[2][indices])
+
+    #process batches of data
+    for i in range(0, len(training_set[0]), batch_size):
+        batch_captions = Tensor(training_set[0][i : i + batch_size])
+        batch_images = Tensor(training_set[1][i : i + batch_size])
+        batch_confusors = Tensor(training_set[2][i : i + batch_size])
+
+        #perform forword pass
+        caption_emb, image_emb = model(batch_captions, batch_images)
+        _, confusor_emb = model(batch_captions, batch_confusors)
+
+        #loss and accuracy computation
+        loss, accuracy = compute_loss_and_accuracy(caption_emb, image_emb, confusor_emb)
+
+        #optimize
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+
+        total_loss = total_loss + loss.item() * len(batch_captions)
+        total_accuracy = total_accuracy + accuracy * len(batch_captions)
+
+    avg_loss = total_loss / len(training_set[0])
+    avg_accuracy = total_accuracy / len(training_set[0])
+
+    print(f"Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.4f}, Accuracy: {avg_accuracy:.4f}")
+
+#call save and load functions to determine final model parameters
+save_model(model, 'mynn_model_weights_final.pkl')
+load_model(model, 'mynn_model_weights_final.pkl')
